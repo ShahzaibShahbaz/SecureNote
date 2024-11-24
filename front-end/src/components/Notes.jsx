@@ -77,6 +77,20 @@ function Notes() {
           ))}
         </div>
       )}
+      <div>
+      <h1>Your Notes</h1>
+      <Link to="/notes/new">
+        <button>Create New Note</button>
+      </Link>
+      {notes.map((note) => (
+        <div key={note._id}>
+          <p>{note.content}</p>
+          <Link to={`/notes/edit/${note._id}`}>
+            <button>Edit</button>
+          </Link>
+        </div>
+      ))}
+    </div>
     </div>
   );
 }
