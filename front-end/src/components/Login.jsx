@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import CryptoJS from "crypto-js";
+import { deriveEncryptionKey } from "../utils/cryptoUtils";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -9,6 +11,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Login.jsx
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -19,8 +22,12 @@ function Login() {
         email,
         password,
       });
+      const { token, email: userEmail } = response.data.data;
 
-      localStorage.setItem("token", response.data.token);
+      // Store data securely
+      localStorage.setItem("token", token);
+      localStorage.setItem("userEmail", userEmail);
+
       navigate("/notes");
     } catch (error) {
       setError(error.response?.data?.message || "Invalid credentials");

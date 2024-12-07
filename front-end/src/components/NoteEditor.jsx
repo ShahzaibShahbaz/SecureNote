@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { encryptNoteContent, decryptNoteContent } from "../utils/cryptoUtils";
+import Navbar from "./Navbar";
 
 function NoteEditor() {
   const [note, setNote] = useState({ content: "" });
@@ -18,19 +20,43 @@ function NoteEditor() {
   const fetchNote = async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem("token");
+      const userEmail = localStorage.getItem("userEmail");
+
+      if (!token || !userEmail) {
+        throw new Error("Authentication required");
+      }
+
       const response = await axios.get(
         `http://localhost:5000/notes/${noteId}`,
         {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setNote(response.data);
+
+      const { encryptedContent, salt } = response.data;
+
+      const userPassword = prompt("Enter your password to decrypt the note");
+
+      if (!userPassword) {
+        throw new Error("Password is required");
+      }
+
+      const decryptedContent = decryptNoteContent(
+        encryptedContent,
+        userPassword,
+        userEmail // Use email as a unique identifier
+      );
+
+      setNote({
+        content: decryptedContent || "",
+      });
     } catch (error) {
+      console.error("Error fetching note:", error);
       if (error.response?.status === 401) {
         localStorage.removeItem("token");
         navigate("/");
       }
-      setError("Failed to fetch note");
     } finally {
       setLoading(false);
     }
@@ -42,23 +68,61 @@ function NoteEditor() {
     setError("");
 
     try {
-      const headers = {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      const token = localStorage.getItem("token");
+      const userEmail = localStorage.getItem("userEmail");
+
+      if (!token || !userEmail) {
+        throw new Error("Authentication required");
+      }
+
+      // Prompt for password (this is a simple implementation, consider a more secure method)
+      const userPassword = prompt("Enter your password to encrypt the note");
+
+      if (!userPassword) {
+        throw new Error("Password is required");
+      }
+
+      const { iv, encryptedContent, salt } = encryptNoteContent(
+        note.content,
+        userPassword,
+        userEmail // Use email as a unique identifier
+      );
+
+      const encryptedNote = {
+        iv,
+        encryptedContent,
+        salt,
       };
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
+
       if (noteId) {
-        await axios.put(`http://localhost:5000/notes/${noteId}`, note, {
-          headers,
-        });
+        // Update note
+        await axios.put(
+          `http://localhost:5000/notes/${noteId}`,
+          encryptedNote,
+          { headers }
+        );
       } else {
-        await axios.post("http://localhost:5000/notes", note, { headers });
+        // Create a new note
+        const res = await axios.post(
+          "http://localhost:5000/notes",
+          encryptedNote,
+          {
+            headers,
+          }
+        );
       }
       navigate("/notes");
     } catch (error) {
+      console.error("Error response:", error);
       if (error.response?.status === 401) {
         localStorage.removeItem("token");
         navigate("/");
       }
-      setError("Failed to save note");
+      setError(error.message || "Failed to save note");
     } finally {
       setLoading(false);
     }

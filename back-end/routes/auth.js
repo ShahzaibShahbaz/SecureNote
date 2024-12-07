@@ -4,7 +4,6 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 const router = express.Router();
-const JWT_SECRET = "your_jwt_secret_key";
 
 // Middleware to Verify JWT
 const authenticateToken = (req, res, next) => {
@@ -26,27 +25,38 @@ const authenticateToken = (req, res, next) => {
 };
 
 // Signup Route
+// routes/auth.js
+const JWT_SECRET = process.env.JWT_SECRET || "my_very_secure_random_secret";
+
+// Add password complexity validation
 router.post("/signup", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check if user already exists
+    // Password complexity check
+    if (password.length < 8) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters long",
+      });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashedPassword });
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const user = new User({
+      email,
+      password: hashedPassword,
+    });
     await user.save();
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
-    console.error("Signup error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
 // Login Route
 router.post("/login", async (req, res) => {
   try {
@@ -66,7 +76,7 @@ router.post("/login", async (req, res) => {
       expiresIn: "1h",
     });
 
-    res.json({ message: "Login successful", token });
+    res.json({ message: "Login successful", data: { email, token } });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Internal server error" });

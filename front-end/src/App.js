@@ -9,6 +9,7 @@ import Login from "./components/Login";
 import Signup from "./components/Signup";
 import Notes from "./components/Notes";
 import NoteEditor from "./components/NoteEditor";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 function App() {
   const PrivateRoute = ({ children }) => {
